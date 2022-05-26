@@ -32,11 +32,11 @@ from scipy.interpolate import griddata
 from scipy.interpolate import RBFInterpolator
 from tqdm import tqdm
 import pymysql
-from Bulb_module.Dark import *
+from lightModel.Dark import *
 from matplotlib.ticker import (AutoMinorLocator, MultipleLocator)
 import os
 cwd = os.getcwd()
-path = os.path.join(cwd, "Bulb_module", "Test")
+path = os.path.join(cwd, "lightModel", "Test")
 pd.options.display.float_format = '{:,.3f}'.format
 pos_df = pd.read_csv( os.path.join(path,'Area.csv'),index_col=0)
 sec = [ chr(aa+ord('A')) for aa in range(ord('L')-ord('A')+1)]

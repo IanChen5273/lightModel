@@ -10,7 +10,7 @@ from scipy.interpolate import RBFInterpolator
 # pos_df = pd.read_csv('Area.csv', index_col=0)
 import os
 cwd = os.getcwd()
-path = os.path.join(cwd, "Bulb_module", "Dark")
+path = os.path.join(cwd, "lightModel", "Dark")
 
 def build_kernel(kernel_X,kernel_Y,kernel_size,filter_size = 3):
     delta_nn=0.05
