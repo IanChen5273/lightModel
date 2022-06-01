@@ -1,43 +1,30 @@
 from dateutil import parser
-from statistics import median
+from statistics import median,mean
 import cv2
 from sklearn.linear_model import LinearRegression
-import ipywidgets as widgets
-from ipywidgets import interact, interact_manual
-from plotly.offline import iplot
-import cufflinks as cf
-cf.go_offline() 
 from scipy.optimize import curve_fit
 from scipy import stats
 import pandas as pd
 import numpy as np
-import json
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
 from matplotlib import cm
 import hdbscan
-import mpl_toolkits.mplot3d.axes3d as p3
 from datetime import datetime,time, tzinfo, timedelta
 import requests
 import math
 import sympy
-from statistics import mean
-from scipy.interpolate import make_lsq_spline
 from itertools import combinations
-from scipy.interpolate import BSpline, splrep, splev
-from sklearn.datasets import make_blobs
+from scipy.interpolate import BSpline, splrep, splev,make_lsq_spline,griddata,RBFInterpolator
 import seaborn as sns
-from scipy.interpolate import griddata
-from scipy.interpolate import RBFInterpolator
 from tqdm import tqdm
-import pymysql
 from lightModel.Dark import *
 from matplotlib.ticker import (AutoMinorLocator, MultipleLocator)
 import os
 cwd = os.getcwd()
 path = os.path.join(cwd, "lightModel", "Test")
-pd.options.display.float_format = '{:,.3f}'.format
+pd.options.display.float_format = '{:,.5f}'.format
 pos_df = pd.read_csv( os.path.join(path,'Area.csv'),index_col=0)
 sec = [ chr(aa+ord('A')) for aa in range(ord('L')-ord('A')+1)]
 bulb_name = [ x for x in pos_df.index.to_list() if x not in sec]+['BB1']
@@ -293,7 +280,6 @@ def kernel_lux(data_prepare1,data_prepare2,area_pos1,area_pos2,kernel_size = 10,
 #     lux1 = lux_to_distance(lux_table_st[1],area_dict)
 #     lux2 = lux_to_distance(lux_table_st[2],area_dict)
 #     lux3 = lux_to_distance(lux_table_st[3],area_dict)
-        
     kernel_X, kernel_Y = np.meshgrid(np.arange(-kernel_size, kernel_size+delta, delta),
                          np.arange(-kernel_size, kernel_size+delta, delta))   
     delta_nn=0.01
@@ -592,7 +578,7 @@ def field_calibration(data_test,weight=True,filter_size = 5,smoothing=1, delta =
     p = ax.scatter(data2['y'],data2['x'],data2['slope'],c=data2['slope'], s=50,ec='k',cmap=cm.coolwarm)
     for dd in data2[['y','x','slope']].values:
         label = '{0:.2f}'.format(dd[2])
-        ax.text(dd[1]+0.1, dd[0]+0.1, dd[2], label,color='black')
+        ax.text(dd[0]+0.1, dd[1]+0.1, dd[2], label,color='black')
     fig.colorbar(p,shrink=0.5)
     ax.view_init(elev=90, azim=-90)
     plt.ylim( mx[0],mn[0])
