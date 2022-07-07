@@ -105,7 +105,7 @@ class Dark_model:
         self.conv_arr = build_conv_arr(self.empty_status ,self.pos_df ,self.new_X,self.new_Y,
                                        self.kernel_X,self.kernel_Y,self.kernel_lux[1],self.BB1_df,self.calibrate)
     def draw_kernel(self,size=8):
-        plt.style.use('dark_background')
+        plt.style.use('seaborn')
         row_len = len(self.kernel_lux)
         fig = plt.figure(figsize=(size+4,size*row_len-4))
         for kk in self.kernel_lux.keys():

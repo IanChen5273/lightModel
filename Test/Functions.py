@@ -171,13 +171,14 @@ def triposition(data):
         return []
     else:
         return [result[x],result[y]]
-def plot_area(area_center,area_pos,alpha=0.5):
+def plot_area(area_center,area_pos,alpha=0.5,style='default'):
     global pos_df
     color={0:'grey',0.5:'lightyellow',1:'yellow'}
     labels = {'grey': 'OFF','yellow':'ON','lightyellow':'HALF'}
     di = {0:0,1:1, 2: 0.5,3:0.5}
     fig = plt.figure(figsize=(9, 9))
-    plt.style.use('dark_background')
+    # plt.style.use('dark_background')
+    plt.style.use(style)
     ax = fig.add_subplot(1, 1, 1)
     ax.set_title('The Position of Sensor',fontsize=20,weight='bold')
 
@@ -317,17 +318,18 @@ def kernel_lux(data_prepare1,data_prepare2,area_pos1,area_pos2,kernel_size = 10,
         kernel_dict[ii+1] = grid_
     return kernel_dict
 
-def draw_kernel(Kernel,kernel_size = 10,delta=0.5,size=8):
+def draw_kernel(Kernel,kernel_size = 10,delta=0.5,size=8,style='default'):
     kernel_X, kernel_Y = np.meshgrid(np.arange(-kernel_size, kernel_size+delta, delta),
                      np.arange(-kernel_size, kernel_size+delta, delta))    
-    plt.style.use('dark_background')
+    # plt.style.use('dark_background')
+    plt.style.use(style)
     row_len = len( Kernel)
     fig = plt.figure(figsize=(size+4,size*row_len-4))
     
     for kk in Kernel.keys():
         # plt.gca().set_aspect('equal', adjustable='box')
         ax = fig.add_subplot(row_len, 2, 1+int((kk-1)*2), projection='3d')
-        ax.set_title('Linear Interpolation',fontsize=20,weight='bold')
+        ax.set_title('Nearest interpolation + Gaussian Filter',fontsize=14,weight='bold')
         p=ax.plot_surface(kernel_Y, kernel_X, Kernel[kk], cmap=cm.coolwarm,linewidth=0, antialiased=False,alpha=0.8)
         # p=ax.plot_surface(X, Y, grid_1, cmap=cm.coolwarm,linewidth=0, antialiased=False,alpha=1)
         # p=ax.plot_surface(X, Y, grid_z1, cmap=cm.coolwarm,linewidth=0, antialiased=False,alpha=0.2)
@@ -337,7 +339,7 @@ def draw_kernel(Kernel,kernel_size = 10,delta=0.5,size=8):
 
         
         ax = fig.add_subplot(row_len, 2, 2+int((kk-1)*2))
-        ax.set_title('status: '+str(kk),fontsize=20)
+        ax.set_title('status: '+str(kk),fontsize=14,weight='bold')
         contours = ax.contour(kernel_Y, kernel_X,  Kernel[kk], 40, cmap=cm.coolwarm)
         ax.set_aspect('equal', 'box')
         fig.colorbar(contours,shrink=0.4,ax=ax)
@@ -367,11 +369,12 @@ def board_to_grid(bk_board,smoothing=0.1,delta = 0.5,mn = [-1,-2],mx = [10,11]):
     BB1_df = pd.DataFrame({'x':new_X.flatten(),'y':new_Y.flatten(),
                              'lux':ygrid.flatten()})
     return BB1_df
-def plot_board_light(bk_board,board_df,delta = 0.5,mn = [-1,-2],mx = [10,11]):
+def plot_board_light(bk_board,board_df,delta = 0.5,mn = [-1,-2],mx = [10,11] ,style='default'):
     new_X,new_Y = np.meshgrid(np.arange(mn[0], mx[0]+delta, delta), np.arange(mn[1], mx[1]+delta, delta))
     one_data = bk_board.values
     ygrid = board_df['lux'].values.reshape(new_X.shape)
-    plt.style.use('dark_background')
+    # plt.style.use('dark_background')
+    plt.style.use(style)
     fig = plt.figure(figsize=(12,6))
     ax = fig.add_subplot(1, 2, 1, projection='3d')
     ax.plot_surface(new_Y,new_X, ygrid, cmap=cm.coolwarm,linewidth=0, antialiased=False,alpha=0.5)
@@ -601,6 +604,7 @@ def build_space_calibration(new_X,new_Y,smoothing=0.6,filter_size=5,data2=None):
     y_grid = yflat.reshape(new_X.shape)
     y_grid = cv2.GaussianBlur(y_grid, (filter_size,filter_size),0)
     return y_grid,model_rbf
+
 def plot_calibrate(error_comb):
     size = 4
     sns.set_style('whitegrid')
@@ -716,12 +720,13 @@ def convolution_final(lux_mode,template_bb,area_,samples= 5,delta=0.25,modes_lis
       'Std: {:.2f},'.format(mean(error_df.std())),
       'Max: {:.2f},'.format(max(error_df.abs().max())))
     return error_comb,error_df
-def plot_template(sensors,lighting,bulb_lux,error_df,new_Y, new_X,back_alpha=0.5):
+
+def plot_template(sensors,lighting,bulb_lux,error_df,new_Y, new_X,back_alpha=0.5,style='default'):
     color={0:'grey',0.5:'lightyellow',1:'yellow'}
     labels = {'grey': 'OFF','yellow':'ON','lightyellow':'HALF'}
     st_dict = {1:1,2:0.5,3:0.5,0:0}
-    plt.style.use('dark_background')
-    fig = plt.figure(figsize=(16,8))
+    plt.style.use(style)
+    fig = plt.figure(figsize=(10,8))
     ax = fig.add_subplot(1, 2, 1, projection='3d')
     ax.scatter(sensors['y'],sensors['x'], sensors['z'],c=( sensors['z']), s=200,ec='k',cmap=cm.coolwarm)
     for index,row in sensors.iterrows():
@@ -734,7 +739,7 @@ def plot_template(sensors,lighting,bulb_lux,error_df,new_Y, new_X,back_alpha=0.5
     plt.xlim(-2,11)
     ax.view_init(elev=80, azim=-90)
     ax = fig.add_subplot(1, 2, 2)
-    plt.style.use("dark_background")
+    ax.set_facecolor('black')
     ax.set_title('Error',fontsize=20,weight='bold')
     for vv in bulb_lux.values:
         ax.scatter(vv[1],vv[0],c=color[st_dict[int(vv[2])]],s=800,marker='s',alpha=back_alpha)
