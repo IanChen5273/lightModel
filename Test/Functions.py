@@ -31,9 +31,10 @@ bulb_name = [ x for x in pos_df.index.to_list() if x not in sec]+['BB1']
 exclude1 = ['1test','2L_B','2R_F','2R_B','2W']
 exclude2 = ['2W','2R_B','2R_F','2L_B','2L_F','1test']
 calib_df = pd.read_csv(os.path.join(path,'calibration_real.csv'),index_col = 0)
+lux_dist_df = pd.read_csv(os.path.join(path,'Lux_to_distance.csv'),index_col =0)
 sensor_all = sorted(calib_df.index.tolist())
 sensor_all.remove('test_lid')
-
+Global_lux_dict = {}
 def Get_raw(Date_start,Date_end):
     global calib_df,sensor_all
     Get_lux_url = "http://led.incku.com:8000/lux_all_download"
@@ -125,7 +126,7 @@ def Data_mean(data,exclude,draw=True):
     return pd.DataFrame(data_array)#.drop('BB1')
 
 def Spline_fit(lux_max,n_interior_knots,head,lux_dist_df=None,draw=False):
-#     print(lux_dist_df)
+    #     print(lux_dist_df)
     if lux_dist_df is None:
         df = pd.read_csv(os.path.join(path,'lux_dist_final.csv'))
         df = pd.DataFrame({'x':[ float("{:0.4f}".format(x)) for x in df['lux']],
@@ -144,7 +145,7 @@ def Spline_fit(lux_max,n_interior_knots,head,lux_dist_df=None,draw=False):
     df = pd.concat([df,pd.DataFrame([[lux_max,0]],columns=['x', 'y'])], ignore_index=True)
     
     df = pd.concat([pd.DataFrame([[0,15]],columns=['x', 'y']),df], ignore_index=True)
-#     print(df.head(5))
+    #     print(df.head(5))
     ts = df['x']
     ys = df['y']
     qs = np.linspace(0, 1, n_interior_knots+2)[1:-1]
@@ -276,11 +277,12 @@ def lux_to_distance(comb_st,area_dict):
 
 
 def kernel_lux(data_prepare1,data_prepare2,area_pos1,area_pos2,kernel_size = 10,filter_size = 3,delta=0.5,save=False):
+    global Global_lux_dict
     lux1,lux2,lux3 = lux_dis_combined(data_prepare1,data_prepare2,area_pos1,area_pos2)
-#     lux_table_st = lux_table_status(data_prepare)
-#     lux1 = lux_to_distance(lux_table_st[1],area_dict)
-#     lux2 = lux_to_distance(lux_table_st[2],area_dict)
-#     lux3 = lux_to_distance(lux_table_st[3],area_dict)
+    #     lux_table_st = lux_table_status(data_prepare)
+    #     lux1 = lux_to_distance(lux_table_st[1],area_dict)
+    #     lux2 = lux_to_distance(lux_table_st[2],area_dict)
+    #     lux3 = lux_to_distance(lux_table_st[3],area_dict)
     kernel_X, kernel_Y = np.meshgrid(np.arange(-kernel_size, kernel_size+delta, delta),
                          np.arange(-kernel_size, kernel_size+delta, delta))   
     delta_nn=0.01
@@ -312,6 +314,7 @@ def kernel_lux(data_prepare1,data_prepare2,area_pos1,area_pos2,kernel_size = 10,
         lux_t = lux_[ii+1] 
         if save:
             lux_t.to_csv( os.path.join(cwd, 'lux_'+str(ii+1)+'_final.csv') ,index=False)
+        Global_lux_dict[ii+1] = lux_t
         nn = griddata(lux_t[['x','y']].values,lux_t['lux'].values, (nn_X, nn_Y), method='nearest')
         nn = cv2.resize(nn, kernel_X.shape, interpolation=cv2.INTER_AREA)
         grid_ = cv2.GaussianBlur(nn, (filter_size,filter_size),0)
@@ -397,10 +400,10 @@ def f(sym_y,sym,smoothing):
     bk_board1 = Board_light(dark1,area_pos1[0],sym_y =sym_y,sym=sym)
     bk_board2 = Board_light(dark2,area_pos2[0],sym_y =sym_y,sym=sym)
     bk_board = pd.concat([bk_board1,bk_board2])
-#     bk_board[bk_board.index!='2c':,'lux'] = bk_board.drop('2c').apply(lambda x: x['lux']/calibration.loc[x.name,'slope'] ,axis=1)
-#     temp_df = pd.merge(bk_board,calibration,left_index=True,right_index=True,how = 'inner')
-#     temp_df['lux'] = temp_df['lux']/temp_df['slope']
-#     temp_df[['x','y','lux']]
+    #     bk_board[bk_board.index!='2c':,'lux'] = bk_board.drop('2c').apply(lambda x: x['lux']/calibration.loc[x.name,'slope'] ,axis=1)
+    #     temp_df = pd.merge(bk_board,calibration,left_index=True,right_index=True,how = 'inner')
+    #     temp_df['lux'] = temp_df['lux']/temp_df['slope']
+    #     temp_df[['x','y','lux']]
     board_df = board_to_grid(bk_board[['x','y','lux']],smoothing)
     plot_board_light(bk_board,board_df)
     return sym_y
@@ -408,10 +411,10 @@ def Board_field(dark1,dark2,area_pos1,area_pos2,sym_y,sym,smoothing):
     bk_board1 = Board_light(dark1,area_pos1,sym_y =sym_y,sym=sym)
     bk_board2 = Board_light(dark2,area_pos2,sym_y =sym_y,sym=sym)
     bk_board = pd.concat([bk_board1,bk_board2])
-#     bk_board[bk_board.index!='2c':,'lux'] = bk_board.drop('2c').apply(lambda x: x['lux']/calibration.loc[x.name,'slope'] ,axis=1)
-#     temp_df = pd.merge(bk_board,calibration,left_index=True,right_index=True,how = 'inner')
-#     temp_df['lux'] = temp_df['lux']/temp_df['slope']
-#     temp_df[['x','y','lux']]
+    #     bk_board[bk_board.index!='2c':,'lux'] = bk_board.drop('2c').apply(lambda x: x['lux']/calibration.loc[x.name,'slope'] ,axis=1)
+    #     temp_df = pd.merge(bk_board,calibration,left_index=True,right_index=True,how = 'inner')
+    #     temp_df['lux'] = temp_df['lux']/temp_df['slope']
+    #     temp_df[['x','y','lux']]
     board_df = board_to_grid(bk_board[['x','y','lux']],smoothing)
     plot_board_light(bk_board,board_df)
     return bk_board
@@ -507,13 +510,13 @@ def mode_outlier(error_comb,g_thresh = 50,max_thresh = 200):
     sns.set_style('whitegrid')
     fig = plt.figure(figsize=(16,8))
     sns.lineplot(data= group_err,x='Lux',y='Outlier',color='green')
-#     sns.lineplot(data= group_err,x='Lux',y='Tresh',color='black')
+    #     sns.lineplot(data= group_err,x='Lux',y='Tresh',color='black')
     sns.lineplot(data= group_err,x='Lux',y='Pred',color='red')
     sns.lineplot(data= group_err,x='Lux',y='MAE',color='black')
     # sns.lineplot(data= group_err,x='Lux',y='Std',color='black')
     # sns.lineplot(data= group_err,x='Lux',y='Outlier',color='green')
     sns.scatterplot(data= group_err.loc[mode_exclude],x='Lux',y='Outlier',color='red',s=100)
-#     sns.scatterplot(data= group_err.loc[mode_exclude],x='Lux',y='MAE',color='grey',s=200)
+    #     sns.scatterplot(data= group_err.loc[mode_exclude],x='Lux',y='MAE',color='grey',s=200)
     plt.show()
     return mode_exclude
 def space_err(error_df,error_comb,area_pos):
@@ -526,7 +529,7 @@ def space_err(error_df,error_comb,area_pos):
         x = error_comb[error_comb['area']==aa]['pred'].values.reshape((-1, 1))
         y = error_comb[error_comb['area']==aa]['lux'].values
         model = LinearRegression(fit_intercept=False).fit(x, y) 
-    #     r_sq = model.score(x, y)
+        #     r_sq = model.score(x, y)
         x = error_comb[error_comb['area']==aa]['lux'].values.reshape((-1, 1))
         y = error_comb[error_comb['area']==aa]['diff'].values
         r_sq = LinearRegression(fit_intercept=False).fit(x, y).score(x, y)
@@ -540,12 +543,12 @@ def space_err(error_df,error_comb,area_pos):
 
     return pd.merge(spec, err,on=['x','y'],how='left')
 def plot_space_err(data,weight=True):
-#     data =  pd.merge(pd.concat([spec1,spec2]), pd.concat([err1,err2]),on=['x','y'],how='left')
+    #     data =  pd.merge(pd.concat([spec1,spec2]), pd.concat([err1,err2]),on=['x','y'],how='left')
     fig = plt.figure(figsize=(16,8))
     ax = fig.add_subplot(1, 2, 1, projection='3d')
     p = ax.scatter(data['y'],data['x'], data['slope'],c=( data['weight']),
                    s=data['weight']*100,ec='k',cmap='hot')   
-#     ax.scatter(spec1['y'],spec1['x'], spec1['slope'],c=( spec1['MAE']), s=200,ec='k',cmap=cm.coolwarm)
+    # ax.scatter(spec1['y'],spec1['x'], spec1['slope'],c=( spec1['MAE']), s=200,ec='k',cmap=cm.coolwarm)
     # sns.scatterplot(data=pd.concat([spec1,spec2]),x="x", y="y", hue="slope",size='slope',s=400)
     fig.colorbar(p,shrink=0.5)
     plt.ylim(12,-2)
@@ -555,7 +558,7 @@ def plot_space_err(data,weight=True):
     ax = fig.add_subplot(1, 2, 2, projection='3d')
     p = ax.scatter(data['y'],data['x'], data['slope'],c=( data['slope']),
                        s=data['slope']*100,cmap='hot')
-#     ax.scatter(spec1['y'],spec1['x'], spec1['slope'],c=( spec1['MAE']), s=200,ec='k',cmap=cm.coolwarm)
+    # ax.scatter(spec1['y'],spec1['x'], spec1['slope'],c=( spec1['MAE']), s=200,ec='k',cmap=cm.coolwarm)
     # sns.scatterplot(data=pd.concat([spec1,spec2]),x="x", y="y", hue="slope",size='slope',s=400)
     fig.colorbar(p,shrink=0.5)
     plt.ylim(12,-2)
@@ -597,7 +600,7 @@ def field_calibration(data_test,weight=True,filter_size = 5,smoothing=1, delta =
 def build_space_calibration(new_X,new_Y,smoothing=0.6,filter_size=5,data2=None):
     if data2 is None:
         data2 = pd.read_csv(os.path.join(path,'Space_calibration.csv'))
-#     new_X,new_Y = np.meshgrid(np.arange(mn[0], mx[0]+delta, delta), np.arange(mn[1], mx[1]+delta, delta))
+    #     new_X,new_Y = np.meshgrid(np.arange(mn[0], mx[0]+delta, delta), np.arange(mn[1], mx[1]+delta, delta))
     xflat = np.dstack((new_X.flatten(),new_Y.flatten()))[0]
     model_rbf = RBFInterpolator(data2[['x','y']].values,data2['slope'].values.reshape(-1,1),smoothing=smoothing)
     yflat = model_rbf(xflat)
@@ -663,20 +666,20 @@ def plot_calibrate2(error_comb):
     scatter = sns.scatterplot(data= error_comb,x='lux',y='diff',style='area',hue="area")#,markers=True, dashes=False)
     scatter.set_ylim(bottom=-150, top=150)
     
-#     ax = fig.add_subplot(size, 1, 2)
-#     title = "(AE: {0:.2f}".format(error_comb['diff2'].mean()) +" MAE: {0:.2f}".format(error_comb['abs_diff2'].mean())+\
-#     " Std: {0:.2f}".format(error_comb['diff2'].std())+" Max: {0:.2f})".format(error_comb['abs_diff2'].max())
-#     ax.set_title('Error after calibration ' +title,fontsize=14)
-#     table = pd.plotting.table(ax=ax,
-#     data=  error_comb[['area','diff2','abs_diff2']].rename(columns={'diff2':'Avg Error','abs_diff2':'Mean Abs Error'})\
-#     .set_index('area').reset_index().groupby('area').mean().applymap(lambda x: float('{:,.2f}'.format(x)))\
-#     .sort_values(by='Mean Abs Error',ascending=False).head(5),
-#                      cellLoc = 'center', rowLoc = 'center',colWidths = [0.08]*2,loc='lower center')
-#     table.set_fontsize(12)
-#     table.scale(1.5, 1.5)  # may help
-#     scatter = sns.scatterplot(data= error_comb,x='lux',y='diff2',style='area',hue="area")#,markers=True, dashes=False)
-#     scatter.set_ylim(bottom=-100, top=100)
-    
+    #     ax = fig.add_subplot(size, 1, 2)
+    #     title = "(AE: {0:.2f}".format(error_comb['diff2'].mean()) +" MAE: {0:.2f}".format(error_comb['abs_diff2'].mean())+\
+    #     " Std: {0:.2f}".format(error_comb['diff2'].std())+" Max: {0:.2f})".format(error_comb['abs_diff2'].max())
+    #     ax.set_title('Error after calibration ' +title,fontsize=14)
+    #     table = pd.plotting.table(ax=ax,
+    #     data=  error_comb[['area','diff2','abs_diff2']].rename(columns={'diff2':'Avg Error','abs_diff2':'Mean Abs Error'})\
+    #     .set_index('area').reset_index().groupby('area').mean().applymap(lambda x: float('{:,.2f}'.format(x)))\
+    #     .sort_values(by='Mean Abs Error',ascending=False).head(5),
+    #                      cellLoc = 'center', rowLoc = 'center',colWidths = [0.08]*2,loc='lower center')
+    #     table.set_fontsize(12)
+    #     table.scale(1.5, 1.5)  # may help
+    #     scatter = sns.scatterplot(data= error_comb,x='lux',y='diff2',style='area',hue="area")#,markers=True, dashes=False)
+    #     scatter.set_ylim(bottom=-100, top=100)
+        
     ax = fig.add_subplot(size, 1, 2)
     ax.set_title('Prediction vs Sensor lux values',fontsize=14)
     sns.lineplot(data=error_comb,x="lux", y="pred", style="area", hue="area",markers=True, dashes=False)
@@ -686,25 +689,27 @@ def plot_calibrate2(error_comb):
     his.set_xlim(left=0, right=100)
     ax.set_xlabel('Prediction Error [lux]')
     plt.show()
-def convolution_final(lux_mode,template_bb,area_,samples= 5,delta=0.25,modes_list=None,draw=False):
+def convolution_final(lux_mode,template_bb,area_,samples= 5,delta=0.25,modes_list=None,draw=False,accurate=False):
     error_dict = {}
     result_eval = []
     global pos_df
     dark = Dark.Dark_model(delta=delta,kernel_size=10,mn=[-1,-1],mx=[11,12])
     if samples=='ALL':
         modes_list= [int(ii) for ii in set(lux_mode['mode'].values)]
-#         print(modes_list)
+    #         print(modes_list)
     elif modes_list is None:
         modes_list = np.random.choice(lux_mode['mode'], samples,replace=False)
     for mm in  modes_list:#
         test_tmp = template_bb[template_bb['template']==mm].iloc[0]
         test_lux = lux_mode[lux_mode['mode']==mm].iloc[0].rename('lux').drop('mode').dropna()
-#         result = dark.bulb_conv(test_tmp)
-        result = dark.fast_conv(test_tmp.drop('template'))
+        if accurate:
+            result = dark.bulb_conv(test_tmp)
+        else:
+            result = dark.fast_conv(test_tmp.drop('template'))
         sensors = dark.result_in_points(result,area_)
         
         error = pd.merge(test_lux,sensors.set_index('area')[['z']],how='left',left_index=True,right_index=True)
-#         print(error)
+    #         print(error)
         error_dict[int(mm)] = error['lux']-error['z']
         error_df = pd.merge(error,area_.reset_index(),left_index=True,right_on='area', how='left')
         error_df['diff'] = error['lux'].values - error_df['z'].values
@@ -726,7 +731,7 @@ def plot_template(sensors,lighting,bulb_lux,error_df,new_Y, new_X,back_alpha=0.5
     labels = {'grey': 'OFF','yellow':'ON','lightyellow':'HALF'}
     st_dict = {1:1,2:0.5,3:0.5,0:0}
     plt.style.use(style)
-    fig = plt.figure(figsize=(10,8))
+    fig = plt.figure(figsize=(16,8))
     ax = fig.add_subplot(1, 2, 1, projection='3d')
     ax.scatter(sensors['y'],sensors['x'], sensors['z'],c=( sensors['z']), s=200,ec='k',cmap=cm.coolwarm)
     for index,row in sensors.iterrows():

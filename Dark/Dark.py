@@ -8,18 +8,38 @@ from scipy.interpolate import RBFInterpolator
 # test_modes = pd.read_csv('Test modes.csv', index_col=0)
 # template_bb = pd.read_csv('Test Template.csv', index_col=0)
 # pos_df = pd.read_csv('Area.csv', index_col=0)
+
+
+
+# self.pos_df =  pd.read_csv(os.path.join(path,'Area.csv'), index_col=0)
+# self.template_bb = pd.read_csv(os.path.join(path,'Test Template.csv'), index_col=0)
+# self.test_modes = pd.read_csv(os.path.join(path,'Test modes.csv'), index_col=0)
+# self.empty_status = pd.read_csv(os.path.join(path,'initial_status.csv'),index_col=0)
+
+
 import os
 cwd = os.getcwd()
 path = os.path.join(cwd, "lightModel", "Dark")
+## 設定檔
+path_setting = 'new_result'
+lux_dict_ = {}
+for ii in range(3):
+    lux_dict_[ii+1] = pd.read_csv(os.path.join(path,path_setting,'lux_'+str(ii+1)+'_final.csv') ) # 1 2 3
+field_ = pd.read_csv(os.path.join(path,path_setting,'field_final.csv')).values
+field_calib = pd.read_csv(os.path.join(path,path_setting,'field_calib.csv')).values
+calibrate_ = pd.read_csv(os.path.join(path,path_setting,'Space_calibration2.csv'))
+
 
 def build_kernel(kernel_X,kernel_Y,kernel_size,filter_size = 3):
+    global lux_dict_
     delta_nn=0.05
     nn_X, nn_Y = np.meshgrid(np.arange(-kernel_size, kernel_size+delta_nn, delta_nn),
                              np.arange(-kernel_size, kernel_size+delta_nn, delta_nn))
     kernel_dict = {}
     for ii in range(3):
-#         lux_ = pd.read_csv('lux_'+str(ii+1)+'.csv') 
-        lux_ = pd.read_csv(os.path.join(path,'lux_'+str(ii+1)+'_final.csv') ) 
+    #         lux_ = pd.read_csv('lux_'+str(ii+1)+'.csv') 
+        # lux_ = pd.read_csv(os.path.join(path,'lux_'+str(ii+1)+'_final.csv') ) 
+        lux_ = lux_dict_[ii+1]
         nn = griddata(lux_[['x','y']].values,lux_['lux'].values, (nn_X, nn_Y), method='nearest')
         nn = cv2.resize(nn, kernel_X.shape, interpolation=cv2.INTER_AREA)
         grid_ = cv2.GaussianBlur(nn, (filter_size,filter_size),0)
@@ -27,28 +47,32 @@ def build_kernel(kernel_X,kernel_Y,kernel_size,filter_size = 3):
     # kernel_dict= {1:grid_1,2:grid_2,3:grid_3}
     return kernel_dict
 
-
 # def build_field(new_X,new_Y):
-#     one_data = pd.read_csv('field.csv').values
-#     xflat = np.dstack((new_X.flatten(),new_Y.flatten()))[0]
-#     yflat = RBFInterpolator(one_data[:,:2], one_data[:,2:3])(xflat)
-#     ygrid = yflat.reshape(new_X.shape)
-#     BB1_df = pd.DataFrame({'x':new_X.flatten(),'y':new_Y.flatten(),
-#                              'z':ygrid.flatten()})
-#     return BB1_df
+    #     one_data = pd.read_csv('field.csv').values
+    #     xflat = np.dstack((new_X.flatten(),new_Y.flatten()))[0]
+    #     yflat = RBFInterpolator(one_data[:,:2], one_data[:,2:3])(xflat)
+    #     ygrid = yflat.reshape(new_X.shape)
+    #     BB1_df = pd.DataFrame({'x':new_X.flatten(),'y':new_Y.flatten(),
+    #                              'z':ygrid.flatten()})
+    #     return BB1_df
 
 def build_field(new_X,new_Y,smoothing=1):
-#     new_X,new_Y = np.meshgrid(np.arange(mn[0], mx[0]+delta, delta), np.arange(mn[1], mx[1]+delta, delta))
-    one_data = pd.read_csv(os.path.join(path,'field_final.csv')).values
+    #     new_X,new_Y = np.meshgrid(np.arange(mn[0], mx[0]+delta, delta), np.arange(mn[1], mx[1]+delta, delta))
+    global field_,field_calib
+    one_data = field_#pd.read_csv(os.path.join(path,'field_final.csv')).values
+    # data_calib = field_calib
     xflat = np.dstack((new_X.flatten(),new_Y.flatten()))[0]
     yflat = RBFInterpolator(one_data[:,:2], one_data[:,2:3],smoothing=smoothing)(xflat)
+    yflat2 = RBFInterpolator(field_calib[:,:2], field_calib[:,2:3],smoothing=0.2)(xflat)
+    yflat = yflat+yflat2
     ygrid = yflat.reshape(new_X.shape)
     BB1_df = pd.DataFrame({'x':new_X.flatten(),'y':new_Y.flatten(),
                              'z':ygrid.flatten()})
     return BB1_df
 
-def build_space_calibration(new_X,new_Y,smoothing=0.1,filter_size=5):
-    data2 = pd.read_csv(os.path.join(path,'Space_calibration2.csv'))
+def build_space_calibration(new_X,new_Y,smoothing=0.0,filter_size=5):
+    global calibrate_
+    data2 = calibrate_#pd.read_csv(os.path.join(path,'Space_calibration2.csv'))
     xflat = np.dstack((new_X.flatten(),new_Y.flatten()))[0]
     model_rbf = RBFInterpolator(data2[['x','y']].values,data2['slope'].values.reshape(-1,1),smoothing=smoothing)
     yflat = model_rbf(xflat)
@@ -105,12 +129,12 @@ class Dark_model:
         self.conv_arr = build_conv_arr(self.empty_status ,self.pos_df ,self.new_X,self.new_Y,
                                        self.kernel_X,self.kernel_Y,self.kernel_lux[1],self.BB1_df,self.calibrate)
     def draw_kernel(self,size=8):
-        plt.style.use('seaborn')
+        plt.style.use('default')
         row_len = len(self.kernel_lux)
         fig = plt.figure(figsize=(size+4,size*row_len-4))
         for kk in self.kernel_lux.keys():
             ax = fig.add_subplot(row_len, 2, 1+int((kk-1)*2), projection='3d')
-            ax.set_title('Linear Interpolation',fontsize=12,weight='bold')
+            # ax.set_title('Linear Interpolation',fontsize=12,weight='bold')
             p=ax.plot_surface(self.kernel_Y,self.kernel_X, self.kernel_lux[kk], cmap=cm.coolwarm,linewidth=0, antialiased=False,alpha=0.8)
             ax.view_init(elev=30, azim=90)
             fig.colorbar(p,shrink=0.4,ax=ax)
@@ -125,7 +149,8 @@ class Dark_model:
         plt.show()
 
     def draw_field(self,size=8,dense = 15):
-        plt.style.use('dark_background')
+        # plt.style.use('dark_background')
+        plt.style.use('default')
         fig = plt.figure(figsize=(int(size*2),size))
         ax = fig.add_subplot(1, 2, 1, projection='3d')
         ax.set_title('Field with board light on',fontsize=12,weight='bold')
@@ -147,22 +172,24 @@ class Dark_model:
 
     def plot_ligting(self,test_tmp,lighting,back_alpha=0.5,shrink = 1,target_lux = 1000,slicing=16):
         # print(lighting)
-        title = '  Max: {:.2f}  '.format(lighting.max()['z'])+\
-        'min: {:.2f}  '.format(lighting.min()['z'])+\
+        # title = '  Max: {:.2f}  '.format(lighting.max()['z'])+\
+        # 'min: {:.2f}  '.format(lighting.min()['z'])+\
+        # 'std: {:.2f}'.format(lighting.std()['z'])
+        title = '  mean: {:.2f}  '.format(lighting.mean()['z'])+\
         'std: {:.2f}'.format(lighting.std()['z'])
         bulb_lux= pd.merge(self.pos_df,test_tmp.map({1:1,2:2,3:3,0:0,0.5:2}).rename('lux'),
              how='inner',left_index=True,right_index=True)
         color={0:'grey',0.5:'lightyellow',1:'yellow'}
         labels = {'grey': 'OFF','yellow':'ON','lightyellow':'HALF'}
         st_dict = {1:1,2:0.5,3:0.5,0:0}
-        plt.style.use('seaborn-whitegrid')
+        # plt.style.use('seaborn-whitegrid')
         fig = plt.figure(figsize=(int(16*shrink),int(8*shrink)))
         ax = fig.add_subplot(1, 2, 1, projection='3d')
-        ax.set_title(title,fontsize=12,weight='bold')    
+        ax.set_title(title,fontsize=12*shrink+2,weight='bold')    
         p=ax.plot_surface(self.new_Y, self.new_X, lighting['z'].values.reshape(self.new_X.shape),
                           cmap=cm.coolwarm,linewidth=0, antialiased=False,alpha=0.5)
-        ax.plot_wireframe(self.new_Y[::slicing,::slicing], self.new_X[::slicing,::slicing], 
-                          np.ones(self.new_X.shape)[::slicing,::slicing]*target_lux,color='black', antialiased=False,alpha=1)
+        # ax.plot_wireframe(self.new_Y[::slicing,::slicing], self.new_X[::slicing,::slicing], 
+        #                   np.ones(self.new_X.shape)[::slicing,::slicing]*target_lux,color='black', antialiased=False,alpha=1)
         fig.colorbar(p,shrink=0.5)
         # plt.ylim(10,-1)
         # plt.xlim(-2,11)
@@ -171,7 +198,7 @@ class Dark_model:
         ax.view_init(elev=30, azim=-90)
         ax = fig.add_subplot(1, 2, 2)
         ax.set_facecolor('xkcd:black')
-        ax.set_title('Result',fontsize=12,weight='bold')
+        ax.set_title('Result',fontsize=12*shrink+4,weight='bold')
         for vv in bulb_lux.values:
             ax.scatter(vv[1],vv[0],c=color[st_dict[int(vv[2])]],s=int(795*shrink**2),marker='s',alpha=back_alpha)
         for vv in self.pos_df.loc[self.bulb_name[:12]].values:
@@ -218,11 +245,11 @@ class Dark_model:
         # lighting = temp_df.copy()
         if calibrate:
             temp_df['z'] = temp_df['z']*self.calibrate.flatten()
-#         temp_df*build_space_calibration(new_X,new_Y,smoothing=0.6,filter_size=7).flatten()
+        #         temp_df*build_space_calibration(new_X,new_Y,smoothing=0.6,filter_size=7).flatten()
         return temp_df#lighting
     
     def fast_conv(self,test_tmp,out_type='DataFrame'):
-#         print(test_tmp.shape)
+        #         print(test_tmp.shape)
         st_dict = {2:0.5,3:0.5,1:1,0:0,0.5:0.5}
         result = None
         if isinstance(test_tmp, pd.Series):
@@ -243,6 +270,7 @@ class Dark_model:
                                       'area':area_.index})
         sensors = pd.merge(empty_df2,result, on=['x','y'],how='left',suffixes=('_left', '_right'))
         return sensors
+    
     def test(self,plt_shrink=0.8):
         tmp_choice = np.random.choice(self.test_modes['id'].values, 1)[0]
         mode_info = self.test_modes.set_index('id').loc[tmp_choice,].to_frame().T
