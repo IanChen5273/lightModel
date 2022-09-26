@@ -52,7 +52,9 @@ class Sun_model:
         time_df2 = pd.DataFrame([])
         for tp in time_ps2:
             if time_df2.empty:
+                # print(tp)
                 time_df2 = ffs2.loc[tp:].iloc[0:1]
+                # print(time_df2)
             else:
                 time_df2 = pd.concat([time_df2,ffs2.loc[tp:].iloc[0:1]])
         time_df2 = time_df2[~time_df2.index.duplicated(keep='first')]
@@ -78,10 +80,11 @@ class Sun_model:
             p = ax.scatter(input_work_lx['y'],input_work_lx['x'],input_work_lx['lux'],c=input_work_lx['lux'], 
                            s=50,ec='k',cmap=cm.coolwarm)
             for dd in input_work_lx[['y','x','lux']].values:
-                label = '{0:.3f}'.format(dd[2])
+                label = '{0:.0f}'.format(dd[2])
                 ax.text(dd[0]+0.1, dd[1]+0.1, dd[2], label,color='black')
             fig.colorbar(p,shrink=0.5)
-            ax.view_init(elev=90, azim=-90)
+            # ax.view_init(elev=90, azim=-90)
+            ax.view_init(elev=30, azim=-90)
             plt.ylim( self.mx[0], self.mn[0])
             plt.xlim( self.mn[1], self.mx[1])#mn[1], 
             ax = fig.add_subplot(1, 2, 2)
@@ -115,14 +118,14 @@ class Sun_model:
             fig = plt.figure(figsize=(12,6))
             ax = fig.add_subplot(1, 2, 1, projection='3d')
             ax.set_title(name)
-            # ax.set_title('Area: '+''lux")
             ax.plot_surface(self.new_Y,self.new_X, y_grid, cmap=cm.coolwarm,linewidth=0, antialiased=False,alpha=0.5)
             p = ax.scatter(model['y'],model['x'],model['lux'],c=model['lux'], s=50,ec='k',cmap=cm.coolwarm)
             for dd in model[['y','x','lux']].values:
-                label = '{0:.3f}'.format(dd[2])
+                label = '{0:.0f}'.format(dd[2])
                 ax.text(dd[0]+0.1, dd[1]+0.1, dd[2], label,color='black')
             fig.colorbar(p,shrink=0.5)
-            ax.view_init(elev=90, azim=-90)
+            # ax.view_init(elev=90, azim=-90)
+            ax.view_init(elev=30, azim=-90)
             plt.ylim( self.mx[0],self.mn[0])
             plt.xlim(self.mn[1],self.mx[1])#mn[1], 
             ax = fig.add_subplot(1, 2, 2)

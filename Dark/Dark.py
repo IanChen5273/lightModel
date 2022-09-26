@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy.interpolate import griddata
 from scipy.interpolate import RBFInterpolator
+import seaborn as sns
 # test_modes = pd.read_csv('Test modes.csv', index_col=0)
 # template_bb = pd.read_csv('Test Template.csv', index_col=0)
 # pos_df = pd.read_csv('Area.csv', index_col=0)
@@ -28,7 +29,7 @@ for ii in range(3):
 field_ = pd.read_csv(os.path.join(path,path_setting,'field_final.csv')).values
 field_calib = pd.read_csv(os.path.join(path,path_setting,'field_calib.csv')).values
 calibrate_ = pd.read_csv(os.path.join(path,path_setting,'Space_calibration2.csv'))
-
+empty_status = pd.read_csv(os.path.join(path,'initial_status.csv'),index_col=0)
 
 def build_kernel(kernel_X,kernel_Y,kernel_size,filter_size = 3):
     global lux_dict_
@@ -116,7 +117,7 @@ class Dark_model:
         self.calibrate = build_space_calibration(self.new_X,self.new_Y,smoothing=0.6,filter_size=7)
         self.kernel_lux = build_kernel(self.kernel_X,self.kernel_Y,kernel_size,filter_size)
         self.filter_size = filter_size
-        self.empty_status = pd.read_csv(os.path.join(path,'initial_status.csv'),index_col=0)
+        # self.empty_status = pd.read_csv(os.path.join(path,'initial_status.csv'),index_col=0)
         bulb_sector = []
         sec_name = ['1', '2', '3', '4']
         self.bulb_name = []
@@ -126,7 +127,7 @@ class Dark_model:
         for i in range(12):
             for k in range(4):
                 self.bulb_name.append(bulb_sector[i]+sec_name[k])
-        self.conv_arr = build_conv_arr(self.empty_status ,self.pos_df ,self.new_X,self.new_Y,
+        self.conv_arr = build_conv_arr(empty_status ,self.pos_df ,self.new_X,self.new_Y,
                                        self.kernel_X,self.kernel_Y,self.kernel_lux[1],self.BB1_df,self.calibrate)
     def draw_kernel(self,size=8):
         plt.style.use('default')
@@ -170,20 +171,21 @@ class Dark_model:
         ax.set_aspect('equal', 'box')
         plt.show()
 
-    def plot_ligting(self,test_tmp,lighting,back_alpha=0.5,shrink = 1,target_lux = 1000,slicing=16):
+    def plot_ligting(self,test_tmp,lighting,back_alpha=0.5,shrink = 1,target_lux = 1000,slicing=16,draw_int = True):
         # print(lighting)
         # title = '  Max: {:.2f}  '.format(lighting.max()['z'])+\
         # 'min: {:.2f}  '.format(lighting.min()['z'])+\
         # 'std: {:.2f}'.format(lighting.std()['z'])
-        title = '  mean: {:.2f}  '.format(lighting.mean()['z'])+\
-        'std: {:.2f}'.format(lighting.std()['z'])
+        # title = '  mean: {:.2f}  '.format(lighting.mean()['z'])+\
+        # 'std: {:.2f}'.format(lighting.std()['z'])
+        title = 'Lighting surface'
         bulb_lux= pd.merge(self.pos_df,test_tmp.map({1:1,2:2,3:3,0:0,0.5:2}).rename('lux'),
              how='inner',left_index=True,right_index=True)
         color={0:'grey',0.5:'lightyellow',1:'yellow'}
         labels = {'grey': 'OFF','yellow':'ON','lightyellow':'HALF'}
         st_dict = {1:1,2:0.5,3:0.5,0:0}
         # plt.style.use('seaborn-whitegrid')
-        fig = plt.figure(figsize=(int(16*shrink),int(8*shrink)))
+        fig = plt.figure(figsize=(int(20*shrink),int(8*shrink)))
         ax = fig.add_subplot(1, 2, 1, projection='3d')
         ax.set_title(title,fontsize=12*shrink+2,weight='bold')    
         p=ax.plot_surface(self.new_Y, self.new_X, lighting['z'].values.reshape(self.new_X.shape),
@@ -199,18 +201,36 @@ class Dark_model:
         ax = fig.add_subplot(1, 2, 2)
         ax.set_facecolor('xkcd:black')
         ax.set_title('Result',fontsize=12*shrink+4,weight='bold')
-        for vv in bulb_lux.values:
-            ax.scatter(vv[1],vv[0],c=color[st_dict[int(vv[2])]],s=int(795*shrink**2),marker='s',alpha=back_alpha)
-        for vv in self.pos_df.loc[self.bulb_name[:12]].values:
-            ax.scatter(vv[1],vv[0],c=color[0],s=int(795*shrink**2),marker='s',alpha=back_alpha)
+        if draw_int:
+            sns.scatterplot(data = bulb_lux[bulb_lux['lux']>0],x ='y',y ='x',hue='lux',palette="bright",
+                        s=int(795*shrink**2),marker='s',alpha=back_alpha
+                            ,linewidths=1,edgecolors='gray')
+
+            sns.scatterplot(data = bulb_lux[bulb_lux['lux']==0],x ='y',y ='x',color='black',
+                        s=int(795*shrink**2),marker='s',alpha=back_alpha
+                            ,linewidths=1,edgecolors='gray')
+        else:
+            for vv in bulb_lux.values:
+                ax.scatter(vv[1],vv[0],c=color[st_dict[int(vv[2])]],s=int(795*shrink**2),marker='s',alpha=back_alpha)
+            for vv in self.pos_df.loc[self.bulb_name[:12]].values:
+                ax.scatter(vv[1],vv[0],c=color[0],s=int(795*shrink**2),marker='s',alpha=back_alpha)
+
+            for nn,vv in labels.items():
+                ax.scatter(-4,-4,c=nn,s=int(795*shrink**2),marker='s',alpha=back_alpha,label=vv)
+
+        
         contours = ax.contour(self.new_Y, self.new_X, lighting['z'].values.reshape(self.new_X.shape), 10, cmap=cm.coolwarm,linewidths = 1)
         ax.clabel(contours, inline=1, fontsize=10)
         ax.grid(False)
         ax.set_aspect('equal', 'box')
         plt.ylim(12,-2)
         plt.xlim(-2,11)
-        # plt.ylim(self.mx[0],self.mn[0])
-        # plt.xlim(self.mn[1],self.mx[1])
+        # plt.legend()
+        legend = ax.legend(loc='upper right', bbox_to_anchor=[1.3, 1],frameon = 1,title='Control state',labelspacing=2,borderpad=1)
+        frame = legend.get_frame()
+        frame.set_facecolor('lightgrey')
+        frame.set_edgecolor('black')
+        # plt.tight_layout()
         plt.show()
 
     def bulb_conv(self,test_tmp,calibrate=True):
@@ -271,10 +291,10 @@ class Dark_model:
         sensors = pd.merge(empty_df2,result, on=['x','y'],how='left',suffixes=('_left', '_right'))
         return sensors
     
-    def test(self,plt_shrink=0.8):
+    def test(self,plt_shrink=0.8,draw_int=False):
         tmp_choice = np.random.choice(self.test_modes['id'].values, 1)[0]
         mode_info = self.test_modes.set_index('id').loc[tmp_choice,].to_frame().T
         # plot_table(mode_info)
         test_tmp = self.template_bb[self.template_bb['template']==tmp_choice].iloc[0]
         lighting = self.bulb_conv(test_tmp)
-        self.plot_ligting(test_tmp,lighting,shrink=plt_shrink)
+        self.plot_ligting(test_tmp,lighting,shrink=plt_shrink,draw_int=draw_int)
